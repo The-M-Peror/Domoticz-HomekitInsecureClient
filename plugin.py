@@ -42,7 +42,7 @@ class BasePlugin:
         Domoticz.Log("Initializing Homekit Insecure Client Plugin")
 
         Domoticz.Debug("Creating Connection object")
-        self.headers = { 'Content-Type': 'Application/json', 'Authorization': Parameters["Password"] }
+        self.headers = { 'Content-Type': 'Application/json', 'Authorization': Parameters["Password"], 'Host': Parameters["Address"]+":"+Parameters["Port"] }
         self.httpConnGet = Domoticz.Connection(Name="httpGET", Transport="TCP/IP", Protocol="HTTP", Address=Parameters["Address"], Port=Parameters["Port"])
 
         Domoticz.Log("Connecting to Homekit Device at address http://" + Parameters["Address"] + ":" + Parameters["Port"] )
