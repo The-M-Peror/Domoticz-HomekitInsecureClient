@@ -131,6 +131,35 @@ class BasePlugin:
                                 Devices[domoticzID].Update(nValue=0,sValue="Off")
                             else:
                                 Domoticz.Error("Invalid Homekit Data")
+                    # Service of type Blinds (Window Covering)
+                    elif( service["type"] == "8" ):
+                        Domoticz.Debug(str( service["characteristics"] ) )
+                        hkName="NoName"
+                        hkCurrentPosition = None
+                        hkTargetPosition = None
+                        hkiid = None
+                        for characteristic in service["characteristics"]:
+                            if ( characteristic["type"] == "23" ):
+                                hkName = characteristic["value"]
+                            if ( characteristic["type"] == "25" ):
+                                hkCurrentPosition = characteristic["value"]
+                                hkiid = characteristic["iid"]
+                            if ( characteristic["type"] == "26" ):
+                                hkTargetPosition = characteristic["value"]
+                        deviceID = service["type"] + "-" + str( hkaid ) + "-" + str( hkiid )
+                        domoticzID = GetIDFromDevID( deviceID )
+                        Domoticz.Debug( hkManufacturer + " : " + hkName + " - DeviceID=" + deviceID + " - DomoticzID=" + str( domoticzID ) + " - Current Position=" + str (hkCurrentPosition) )
+
+                        if ( domoticzID == -1 ):
+                            Domoticz.Debug("Create domoticz device :\"" + hkName + "\" with ID=" + str( len(Devices) + 1 ) + " and DeviceID=" + deviceID + " of type Blinds")
+                            Domoticz.Device(Name=hkName, Unit=len(Devices) + 1, TypeName="Blinds", DeviceID=deviceID ).Create()
+                            domoticzID = GetIDFromDevID( deviceID )
+                            Domoticz.Log("Device created: " + hkName + " - DeviceID=" + deviceID )
+                        IDX = Devices[domoticzID].ID
+                        # Update position if changed
+                        if ( hkCurrentPosition is not None and hkCurrentPosition != Devices[domoticzID].nValue ):
+                            Domoticz.Log("Set Position to " + str(hkCurrentPosition) + " for Device " + hkName + " - IDX=" + str( IDX ) + " - DeviceID=" + deviceID + " - DomoticzID=" + str( domoticzID ) )
+                            Devices[domoticzID].Update(nValue=int(hkCurrentPosition),sValue=str(hkCurrentPosition))
                     elif( service["type"] == "3E"):
                         pass
                     else:
@@ -149,13 +178,35 @@ class BasePlugin:
             aid = deviceIDsplitted[1]
             iid = deviceIDsplitted[2]
 
+            # Detect blinds by device type
+            if deviceIDsplitted[0] == "8":
+                # Command can be "Open", "Close", or a position (0-100)
+                if str(Command).lower() == "open":
+                    target = 100
+                elif str(Command).lower() == "close":
+                    target = 0
+                else:
+                    try:
+                        target = int(Command)
+                    except Exception:
+                        Domoticz.Error("Invalid command for blinds: " + str(Command))
+                        return
+                Devices[Unit].Update(nValue=target, sValue=str(target))
+                data = "{\"characteristics\":[{\"aid\":" + aid + ",\"iid\":" + iid + ",\"value\":" + str(target) + "}]}"
+                Domoticz.Debug(data)
+                try:
+                    self.httpConnGet.Send({'Verb':'PUT', 'URL':'/characteristics', 'Headers': self.headers, 'Data': data})
+                except Exception:
+                    Domoticz.Error("Problem sending command to accessory : " + data)
+                return
+
             Domoticz.Log("Command called for Unit=" + str(Unit) + " and DeviceID=" + Devices[Unit].DeviceID + ": Parameter '" + str(Command) + "'")
             data = "{\"characteristics\":[{\"aid\":" + aid + ",\"iid\":" + iid + ",\"value\":" + nValue + "}]}"
             Domoticz.Debug(data)
 
             try:
                 self.httpConnGet.Send({'Verb':'PUT', 'URL':'/characteristics', 'Headers': self.headers, 'Data': data})
-            except:
+            except Exception:
                 Domoticz.Error("Problem sending command to accessory : " + data)
 
     def onNotification(self, Name, Subject, Text, Status, Priority, Sound, ImageFile):
