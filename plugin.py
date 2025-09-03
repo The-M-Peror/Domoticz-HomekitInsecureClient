@@ -132,7 +132,7 @@ class BasePlugin:
                             else:
                                 Domoticz.Error("Invalid Homekit Data")
                     # Service of type Blinds (Window Covering)
-                    elif( service["type"] == "8" ):
+                    elif( service["type"] == "8C" ):
                         Domoticz.Debug(str( service["characteristics"] ) )
                         hkName="NoName"
                         hkCurrentPosition = None
@@ -179,7 +179,7 @@ class BasePlugin:
             iid = deviceIDsplitted[2]
 
             # Detect blinds by device type
-            if deviceIDsplitted[0] == "8":
+            if deviceIDsplitted[0] == "8C":
                 # Command can be "Open", "Close", or a position (0-100)
                 if str(Command).lower() == "open":
                     target = 100
