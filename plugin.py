@@ -141,10 +141,10 @@ class BasePlugin:
                         for characteristic in service["characteristics"]:
                             if ( characteristic["type"] == "23" ):
                                 hkName = characteristic["value"]
-                            if ( characteristic["type"] == "25" ):
+                            if ( characteristic["type"] == "6D" ):
                                 hkCurrentPosition = characteristic["value"]
                                 hkiid = characteristic["iid"]
-                            if ( characteristic["type"] == "26" ):
+                            if ( characteristic["type"] == "7C" ):
                                 hkTargetPosition = characteristic["value"]
                         deviceID = service["type"] + "-" + str( hkaid ) + "-" + str( hkiid )
                         domoticzID = GetIDFromDevID( deviceID )
