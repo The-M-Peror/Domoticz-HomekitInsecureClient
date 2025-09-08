@@ -152,12 +152,12 @@ class BasePlugin:
 
                         if ( domoticzID == -1 ):
                             Domoticz.Debug("Create domoticz device :\"" + hkName + "\" with ID=" + str( len(Devices) + 1 ) + " and DeviceID=" + deviceID + " of type Blinds")
-                            Domoticz.Device(Name=hkName, Unit=len(Devices) + 1, TypeName="Blinds", DeviceID=deviceID ).Create()
+                            Domoticz.Device(Name=hkName, Unit=len(Devices) + 1, TypeName="BlindsPercentageWithStop", DeviceID=deviceID ).Create()
                             domoticzID = GetIDFromDevID( deviceID )
                             Domoticz.Log("Device created: " + hkName + " - DeviceID=" + deviceID )
                         IDX = Devices[domoticzID].ID
                         # Update position if changed
-                        if ( hkCurrentPosition is not None and hkCurrentPosition != Devices[domoticzID].nValue ):
+                        if ( (hkCurrentPosition is not None) and (hkCurrentPosition != Devices[domoticzID].nValue) ):
                             Domoticz.Log("Set Position to " + str(hkCurrentPosition) + " for Device " + hkName + " - IDX=" + str( IDX ) + " - DeviceID=" + deviceID + " - DomoticzID=" + str( domoticzID ) )
                             Devices[domoticzID].Update(nValue=int(hkCurrentPosition),sValue=str(hkCurrentPosition))
                     elif( service["type"] == "3E"):
