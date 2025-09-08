@@ -124,10 +124,10 @@ class BasePlugin:
                         IDX = Devices[domoticzID].ID
                         if ( hkValue != Devices[domoticzID].nValue ):
                             if ( hkValue == 1 ):
-                                Domoticz.Log("Set ON  to Device " + hkName + " - IDX=" + str( IDX ) + " - DeviceID=" + deviceID + " - DomoticzID=" + str( domoticzID ) )
+                                Domoticz.Status("Set ON  to Device " + hkName + " - IDX=" + str( IDX ) + " - DeviceID=" + deviceID + " - DomoticzID=" + str( domoticzID ) )
                                 Devices[domoticzID].Update(nValue=1,sValue="On")
                             elif ( hkValue == 0 ):
-                                Domoticz.Log("Set OFF to Device " + hkName + " - IDX=" + str( IDX ) + " - DeviceID=" + deviceID + " - DomoticzID=" + str( domoticzID ) )
+                                Domoticz.Status("Set OFF to Device " + hkName + " - IDX=" + str( IDX ) + " - DeviceID=" + deviceID + " - DomoticzID=" + str( domoticzID ) )
                                 Devices[domoticzID].Update(nValue=0,sValue="Off")
                             else:
                                 Domoticz.Error("Invalid Homekit Data")
@@ -158,7 +158,7 @@ class BasePlugin:
                         IDX = Devices[domoticzID].ID
                         # Update position if changed
                         if ( (hkCurrentPosition is not None) and (hkCurrentPosition != Devices[domoticzID].nValue) ):
-                            Domoticz.Log("Set Position to " + str(hkCurrentPosition) + " for Device " + hkName + " - IDX=" + str( IDX ) + " - DeviceID=" + deviceID + " - DomoticzID=" + str( domoticzID ) )
+                            Domoticz.Status("Set Position to " + str(hkCurrentPosition) + " for Device " + hkName + " - IDX=" + str( IDX ) + " - DeviceID=" + deviceID + " - DomoticzID=" + str( domoticzID ) )
                             Devices[domoticzID].Update(nValue=int(hkCurrentPosition),sValue=str(hkCurrentPosition))
                     elif( service["type"] == "3E"):
                         pass
@@ -195,12 +195,13 @@ class BasePlugin:
                 data = "{\"characteristics\":[{\"aid\":" + aid + ",\"iid\":" + iid + ",\"value\":" + str(target) + "}]}"
                 Domoticz.Debug(data)
                 try:
+                    Domoticz.Status("Command called for Unit=" + str(Unit) + " and DeviceID=" + Devices[Unit].DeviceID + ": Parameter '" + str(Command) + "', target:" + str(target))
                     self.httpConnGet.Send({'Verb':'PUT', 'URL':'/characteristics', 'Headers': self.headers, 'Data': data})
                 except Exception:
                     Domoticz.Error("Problem sending command to accessory : " + data)
                 return
 
-            Domoticz.Log("Command called for Unit=" + str(Unit) + " and DeviceID=" + Devices[Unit].DeviceID + ": Parameter '" + str(Command) + "'")
+            Domoticz.Status("Command called for Unit=" + str(Unit) + " and DeviceID=" + Devices[Unit].DeviceID + ": Parameter '" + str(Command) + "'")
             data = "{\"characteristics\":[{\"aid\":" + aid + ",\"iid\":" + iid + ",\"value\":" + nValue + "}]}"
             Domoticz.Debug(data)
 
