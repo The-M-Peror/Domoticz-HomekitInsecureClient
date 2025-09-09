@@ -30,6 +30,7 @@ class BasePlugin:
     Timeout = 60000
     GetSent = 0
     headers = { 'Content-Type': 'Application/json'}
+    deviceData = {}
 
     def __init__(self):
         return
@@ -74,6 +75,10 @@ class BasePlugin:
 
         if (Status == 204):
             Domoticz.Debug( "Command sent")
+            return
+        elif (Status == 207):
+            Domoticz.Debug( "Command mixed response")
+            Domoticz.Debug( Data["Data"].decode("utf-8", "ignore") )
             return
         elif (Status != 200):
             Domoticz.Error("Invalid Data received. Status=" + str( Status) )
@@ -146,6 +151,7 @@ class BasePlugin:
                                 hkiid = characteristic["iid"]
                             if ( characteristic["type"] == "7C" ):
                                 hkTargetPosition = characteristic["value"]
+                                hkTargetPositionIid = characteristic["iid"]
                         deviceID = service["type"] + "-" + str( hkaid ) + "-" + str( hkiid )
                         domoticzID = GetIDFromDevID( deviceID )
                         Domoticz.Debug( hkManufacturer + " : " + hkName + " - DeviceID=" + deviceID + " - DomoticzID=" + str( domoticzID ) + " - Current Position=" + str (hkCurrentPosition) )
@@ -156,10 +162,18 @@ class BasePlugin:
                             domoticzID = GetIDFromDevID( deviceID )
                             Domoticz.Log("Device created: " + hkName + " - DeviceID=" + deviceID )
                         IDX = Devices[domoticzID].ID
+                        Domoticz.Debug("Device " + hkName + " - IDX=" + str( IDX ) + " - DeviceID=" + deviceID + " - DomoticzID=" + str( domoticzID ) + " - nValue: " + str(Devices[domoticzID].nValue)  )
+                        # Store TargetPosition IID for future use
+                        if (domoticzID in self.deviceData):
+                            self.deviceData[domoticzID]["hkTargetPositionIid"] = str(hkTargetPositionIid)
+                        else:
+                            self.deviceData[domoticzID] = {
+                                "hkTargetPositionIid": str(hkTargetPositionIid)
+                            }
                         # Update position if changed
                         if ( (hkCurrentPosition is not None) and (hkCurrentPosition != Devices[domoticzID].nValue) ):
-                            Domoticz.Status("Set Position to " + str(hkCurrentPosition) + " for Device " + hkName + " - IDX=" + str( IDX ) + " - DeviceID=" + deviceID + " - DomoticzID=" + str( domoticzID ) )
-                            Devices[domoticzID].Update(nValue=int(hkCurrentPosition),sValue=str(hkCurrentPosition))
+                            Domoticz.Status("Set Position to " + str(hkCurrentPosition) + " / '" + hkBlindsPercToSvalue(hkCurrentPosition) + "' for Device " + hkName + " - IDX=" + str( IDX ) + " - DeviceID=" + deviceID + " - DomoticzID=" + str( domoticzID ) )
+                            Devices[domoticzID].Update(nValue=int(hkCurrentPosition),sValue=hkBlindsPercToSvalue(hkCurrentPosition))
                     elif( service["type"] == "3E"):
                         pass
                     else:
@@ -191,8 +205,12 @@ class BasePlugin:
                     except Exception:
                         Domoticz.Error("Invalid command for blinds: " + str(Command))
                         return
-                Devices[Unit].Update(nValue=target, sValue=str(target))
-                data = "{\"characteristics\":[{\"aid\":" + aid + ",\"iid\":" + iid + ",\"value\":" + str(target) + "}]}"
+                hkTargetPositionIid = self.deviceData[Unit]["hkTargetPositionIid"] if Unit in self.deviceData else None
+                if (hkTargetPositionIid is None):
+                    Domoticz.Error("Target position IID unknown, can not set.")
+                    return
+                Devices[Unit].Update(nValue=target, sValue=hkBlindsPercToSvalue(target))
+                data = "{\"characteristics\":[{\"aid\":" + aid + ",\"iid\":" + hkTargetPositionIid + ",\"value\":" + str(target) + "}]}"
                 Domoticz.Debug(data)
                 try:
                     Domoticz.Status("Command called for Unit=" + str(Unit) + " and DeviceID=" + Devices[Unit].DeviceID + ": Parameter '" + str(Command) + "', target:" + str(target))
@@ -311,3 +329,9 @@ def DumpHTTPResponseToLog(httpResp, level=0):
     else:
         Domoticz.Debug(indentStr + ">'" + x + "':'" + str(httpResp[x]) + "'")
         
+def hkBlindsPercToSvalue(nValue):
+    if (nValue == 0):
+        return "Closed"
+    elif (nValue == 100):
+        return "Open"
+    return str(nValue)
