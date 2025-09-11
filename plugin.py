@@ -24,6 +24,11 @@
 import Domoticz
 import json
 
+if False==True: # Hack: get rid of the not found warnings in the IDE.
+    Domoticz = {}
+    Parameters = {}
+    Devices = {}
+
 class BasePlugin:
     enabled = False
     httpConnGet = None
@@ -171,9 +176,8 @@ class BasePlugin:
                                 "hkTargetPositionIid": str(hkTargetPositionIid)
                             }
                         # Update position if changed
-                        if ( (hkCurrentPosition is not None) and (hkCurrentPosition != Devices[domoticzID].nValue) ):
-                            Domoticz.Status("Set Position to " + str(hkCurrentPosition) + " / '" + hkBlindsPercToSvalue(hkCurrentPosition) + "' for Device " + hkName + " - IDX=" + str( IDX ) + " - DeviceID=" + deviceID + " - DomoticzID=" + str( domoticzID ) )
-                            Devices[domoticzID].Update(nValue=int(hkCurrentPosition),sValue=hkBlindsPercToSvalue(hkCurrentPosition))
+                        if (hkCurrentPosition is not None):
+                            self.setDomoStatusBlinds( Devices[domoticzID], hkCurrentPosition )
                     elif( service["type"] == "3E"):
                         pass
                     else:
@@ -190,43 +194,38 @@ class BasePlugin:
 
             deviceIDsplitted = Devices[Unit].DeviceID.split("-")
             aid = deviceIDsplitted[1]
-            iid = deviceIDsplitted[2]
+            iid = deviceIDsplitted[2]   
 
-            # Detect blinds by device type
+            # Detect device type
             if deviceIDsplitted[0] == "8C":
-                # Command can be "Open", "Close", or a position (0-100)
-                if str(Command).lower() == "open":
-                    target = 100
-                elif str(Command).lower() == "close":
-                    target = 0
-                else:
-                    try:
-                        target = int(Command)
-                    except Exception:
-                        Domoticz.Error("Invalid command for blinds: " + str(Command))
-                        return
+                # Blinds
+                # We need the iid for targetposition for setting a position. The iid from above is that of currentposition.
                 hkTargetPositionIid = self.deviceData[Unit]["hkTargetPositionIid"] if Unit in self.deviceData else None
                 if (hkTargetPositionIid is None):
                     Domoticz.Error("Target position IID unknown, can not set.")
                     return
-                Devices[Unit].Update(nValue=target, sValue=hkBlindsPercToSvalue(target))
-                data = "{\"characteristics\":[{\"aid\":" + aid + ",\"iid\":" + hkTargetPositionIid + ",\"value\":" + str(target) + "}]}"
+                iid = hkTargetPositionIid
+
+                if Command == "Off" or Command == "Close":
+                    self.setHkPositionBlinds(aid, iid, 0)
+                elif Command == "On" or Command == "Open":
+                    self.setHkPositionBlinds(aid, iid, 100)
+                elif Command == "Set Level":
+                    self.setHkPositionBlinds(aid, iid, Level)
+                elif Command == "Stop":
+                    Domoticz.Debug("TODO: stop command")
+
+            
+            else:
+                # Assume simple on/off switch
+                Domoticz.Status("Command called for Unit=" + str(Unit) + " and DeviceID=" + Devices[Unit].DeviceID + ": Parameter '" + str(Command) + "'")
+                data = "{\"characteristics\":[{\"aid\":" + aid + ",\"iid\":" + iid + ",\"value\":" + nValue + "}]}"
                 Domoticz.Debug(data)
+
                 try:
-                    Domoticz.Status("Command called for Unit=" + str(Unit) + " and DeviceID=" + Devices[Unit].DeviceID + ": Parameter '" + str(Command) + "', target:" + str(target))
                     self.httpConnGet.Send({'Verb':'PUT', 'URL':'/characteristics', 'Headers': self.headers, 'Data': data})
                 except Exception:
                     Domoticz.Error("Problem sending command to accessory : " + data)
-                return
-
-            Domoticz.Status("Command called for Unit=" + str(Unit) + " and DeviceID=" + Devices[Unit].DeviceID + ": Parameter '" + str(Command) + "'")
-            data = "{\"characteristics\":[{\"aid\":" + aid + ",\"iid\":" + iid + ",\"value\":" + nValue + "}]}"
-            Domoticz.Debug(data)
-
-            try:
-                self.httpConnGet.Send({'Verb':'PUT', 'URL':'/characteristics', 'Headers': self.headers, 'Data': data})
-            except Exception:
-                Domoticz.Error("Problem sending command to accessory : " + data)
 
     def onNotification(self, Name, Subject, Text, Status, Priority, Sound, ImageFile):
         Domoticz.Log("Notification: " + Name + "," + Subject + "," + Text + "," + Status + "," + str(Priority) + "," + Sound + "," + ImageFile)
@@ -248,6 +247,33 @@ class BasePlugin:
         else:
             Domoticz.Log("Connection Lost. Reconnecting.")
             self.httpConnGet.Connect(Timeout=self.Timeout)
+
+    def setDomoStatusBlinds(self, device, hkCurrentPosition):
+        # hkCurrentPosition is a uint between 0 and 100 where 0 is closed and 100 is open - "open" being the _window_ is open (the cover is rolled up in the case)
+        sValue = str(hkCurrentPosition)
+        nValue = 2
+        if hkCurrentPosition == 0:
+            nValue = 0
+        elif hkCurrentPosition == 100:
+            nValue = 1
+        if (device.sValue != sValue):
+            Domoticz.Status("Set Position from '"+device.sValue+"' to '" + sValue + "' for Device " + device.Name + " (" + str( device.ID ) + " )")
+            device.Update(nValue=nValue, sValue=sValue)
+            return True
+        else:
+            return False
+
+    def setHkPositionBlinds(self, aid, iid, value):
+        data = "{\"characteristics\":[{\"aid\":" + aid + ",\"iid\":" + iid + ",\"value\":" + str(value) + "}]}"
+        Domoticz.Debug(data)
+        try:
+            Domoticz.Status("Command called for aid=" + str(aid) + " iid=" + str(iid) + ": Value '" + str(value) + "'")
+            self.httpConnGet.Send({'Verb':'PUT', 'URL':'/characteristics', 'Headers': self.headers, 'Data': data})
+        except Exception:
+            Domoticz.Error("Problem sending command to accessory : " + data)
+        
+
+
 
 global _plugin
 _plugin = BasePlugin()
@@ -329,9 +355,3 @@ def DumpHTTPResponseToLog(httpResp, level=0):
     else:
         Domoticz.Debug(indentStr + ">'" + x + "':'" + str(httpResp[x]) + "'")
         
-def hkBlindsPercToSvalue(nValue):
-    if (nValue == 0):
-        return "Closed"
-    elif (nValue == 100):
-        return "Open"
-    return str(nValue)
