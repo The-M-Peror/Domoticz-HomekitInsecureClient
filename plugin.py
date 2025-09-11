@@ -163,7 +163,7 @@ class BasePlugin:
 
                         if ( domoticzID == -1 ):
                             Domoticz.Debug("Create domoticz device :\"" + hkName + "\" with ID=" + str( len(Devices) + 1 ) + " and DeviceID=" + deviceID + " of type Blinds")
-                            Domoticz.Device(Name=hkName, Unit=len(Devices) + 1, TypeName="BlindsPercentageWithStop", DeviceID=deviceID ).Create()
+                            Domoticz.Device(Name=hkName, Unit=len(Devices) + 1, TypeName="BlindsPercentage", DeviceID=deviceID ).Create()
                             domoticzID = GetIDFromDevID( deviceID )
                             Domoticz.Log("Device created: " + hkName + " - DeviceID=" + deviceID )
                         IDX = Devices[domoticzID].ID
@@ -199,7 +199,7 @@ class BasePlugin:
             # Detect device type
             if deviceIDsplitted[0] == "8C":
                 # Blinds
-                # We need the iid for targetposition for setting a position. The iid from above is that of currentposition.
+                # We need the iid for targetposition for _setting_ a position. The iid from above is that of currentposition (for _getting_ the position).
                 hkTargetPositionIid = self.deviceData[Unit]["hkTargetPositionIid"] if Unit in self.deviceData else None
                 if (hkTargetPositionIid is None):
                     Domoticz.Error("Target position IID unknown, can not set.")
@@ -213,8 +213,9 @@ class BasePlugin:
                 elif Command == "Set Level":
                     self.setHkPositionBlinds(aid, iid, Level)
                 elif Command == "Stop":
-                    Domoticz.Debug("TODO: stop command")
-
+                    Domoticz.Log("STOP command not supported in Somfy HomeKit integration.")  
+                    # https://community.home-assistant.io/t/somfy-connectivity-kit-support-for-overkiz-and-or-homekit/392569/16
+                    # Should be https://developers.homebridge.io/#/characteristic/HoldPosition I assume? 
             
             else:
                 # Assume simple on/off switch
@@ -271,8 +272,6 @@ class BasePlugin:
             self.httpConnGet.Send({'Verb':'PUT', 'URL':'/characteristics', 'Headers': self.headers, 'Data': data})
         except Exception:
             Domoticz.Error("Problem sending command to accessory : " + data)
-        
-
 
 
 global _plugin
