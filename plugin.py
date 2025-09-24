@@ -208,7 +208,7 @@ class BasePlugin:
                             Devices[domoticzID].Update(nValue=nValue, sValue="On" if nValue else "Off")
                     
                     # Service of type Doorbell
-                    elif( service["type"] == "86" ):        # https://developers.homebridge.io/#/service/Doorbell
+                    elif( service["type"] == "121" ):        # https://developers.homebridge.io/#/service/Doorbell
                         hkName = "NoName"
                         programmableSwitchEvent = None
                         hkiid = None
