@@ -224,7 +224,7 @@ class BasePlugin:
 
                         if (domoticzID == -1):
                             Domoticz.Debug("Create domoticz device :\"" + hkName + "\" with ID=" + str(len(Devices) + 1) + " and DeviceID=" + deviceID + " of type Doorbell")
-                            Domoticz.Device(Name=hkName, Unit=len(Devices) + 1, TypeName="Doorbell", DeviceID=deviceID).Create()
+                            Domoticz.Device(Name=hkName, Unit=len(Devices) + 1, Type=244, Subtype=73, Switchtype=1, DeviceID=deviceID).Create()
                             domoticzID = GetIDFromDevID(deviceID)
                             Domoticz.Log("Device created: " + hkName + " - DeviceID=" + deviceID)
                         IDX = Devices[domoticzID].ID
