@@ -141,6 +141,7 @@ class BasePlugin:
                                 Devices[domoticzID].Update(nValue=0,sValue="Off")
                             else:
                                 Domoticz.Error("Invalid Homekit Data")
+                    
                     # Service of type Blinds (Window Covering)
                     elif( service["type"] == "8C" ):
                         Domoticz.Debug(str( service["characteristics"] ) )
@@ -178,16 +179,17 @@ class BasePlugin:
                         # Update position if changed
                         if (hkCurrentPosition is not None):
                             self.setDomoStatusBlinds( Devices[domoticzID], hkCurrentPosition )
+                    
                     # Service of type Motion Sensor
-                    elif( service["type"] == "85" ):
+                    elif( service["type"] == "85" ):        # https://developers.homebridge.io/#/service/MotionSensor
                         hkName = "NoName"
                         motionDetected = None
                         hkiid = None
                         for characteristic in service["characteristics"]:
-                            if ( characteristic["type"] == "23" ):
+                            if ( characteristic["type"] == "23" ):      # https://developers.homebridge.io/#/characteristic/Name
                                 hkName = characteristic["value"]
-                            if ( characteristic["type"] == "22" ):
-                                motionDetected = characteristic["value"]
+                            if ( characteristic["type"] == "22" ):      # https://developers.homebridge.io/#/characteristic/MotionDetected
+                                motionDetected = characteristic["value"] 
                                 hkiid = characteristic["iid"]
                         deviceID = service["type"] + "-" + str(hkaid) + "-" + str(hkiid)
                         domoticzID = GetIDFromDevID(deviceID)
@@ -195,7 +197,7 @@ class BasePlugin:
 
                         if (domoticzID == -1):
                             Domoticz.Debug("Create domoticz device :\"" + hkName + "\" with ID=" + str(len(Devices) + 1) + " and DeviceID=" + deviceID + " of type Motion Sensor")
-                            Domoticz.Device(Name=hkName, Unit=len(Devices) + 1, TypeName="Motion Sensor", DeviceID=deviceID).Create()
+                            Domoticz.Device(Name=hkName, Unit=len(Devices) + 1, TypeName="Motion", DeviceID=deviceID).Create()
                             domoticzID = GetIDFromDevID(deviceID)
                             Domoticz.Log("Device created: " + hkName + " - DeviceID=" + deviceID)
                         IDX = Devices[domoticzID].ID
@@ -204,6 +206,7 @@ class BasePlugin:
                         if (Devices[domoticzID].nValue != nValue):
                             Domoticz.Status("Set Motion to " + ("ON" if nValue else "OFF") + " for Device " + hkName + " - IDX=" + str(IDX) + " - DeviceID=" + deviceID + " - DomoticzID=" + str(domoticzID))
                             Devices[domoticzID].Update(nValue=nValue, sValue="On" if nValue else "Off")
+                    
                     elif( service["type"] == "3E"):
                         pass
                     else:
