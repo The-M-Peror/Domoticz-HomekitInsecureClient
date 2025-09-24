@@ -215,7 +215,7 @@ class BasePlugin:
                         for characteristic in service["characteristics"]:
                             if ( characteristic["type"] == "23" ):      # Name
                                 hkName = characteristic["value"]
-                            if ( characteristic["type"] == "68" ):      # ProgrammableSwitchEvent
+                            if ( characteristic["type"] == "73" ):      # ProgrammableSwitchEvent
                                 programmableSwitchEvent = characteristic["value"]
                                 hkiid = characteristic["iid"]
                         deviceID = service["type"] + "-" + str(hkaid) + "-" + str(hkiid)
