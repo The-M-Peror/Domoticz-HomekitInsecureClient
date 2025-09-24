@@ -207,8 +207,37 @@ class BasePlugin:
                             Domoticz.Status("Set Motion to " + ("ON" if nValue else "OFF") + " for Device " + hkName + " - IDX=" + str(IDX) + " - DeviceID=" + deviceID + " - DomoticzID=" + str(domoticzID))
                             Devices[domoticzID].Update(nValue=nValue, sValue="On" if nValue else "Off")
                     
+                    # Service of type Doorbell
+                    elif( service["type"] == "86" ):        # https://developers.homebridge.io/#/service/Doorbell
+                        hkName = "NoName"
+                        programmableSwitchEvent = None
+                        hkiid = None
+                        for characteristic in service["characteristics"]:
+                            if ( characteristic["type"] == "23" ):      # Name
+                                hkName = characteristic["value"]
+                            if ( characteristic["type"] == "68" ):      # ProgrammableSwitchEvent
+                                programmableSwitchEvent = characteristic["value"]
+                                hkiid = characteristic["iid"]
+                        deviceID = service["type"] + "-" + str(hkaid) + "-" + str(hkiid)
+                        domoticzID = GetIDFromDevID(deviceID)
+                        Domoticz.Debug(hkManufacturer + " : " + hkName + " - DeviceID=" + deviceID + " - DomoticzID=" + str(domoticzID) + " - Doorbell Event=" + str(programmableSwitchEvent))
+
+                        if (domoticzID == -1):
+                            Domoticz.Debug("Create domoticz device :\"" + hkName + "\" with ID=" + str(len(Devices) + 1) + " and DeviceID=" + deviceID + " of type Doorbell")
+                            Domoticz.Device(Name=hkName, Unit=len(Devices) + 1, TypeName="Doorbell", DeviceID=deviceID).Create()
+                            domoticzID = GetIDFromDevID(deviceID)
+                            Domoticz.Log("Device created: " + hkName + " - DeviceID=" + deviceID)
+                        IDX = Devices[domoticzID].ID
+                        # Update status if event detected
+                        # ProgrammableSwitchEvent: 0=single press, 1=double press, 2=long press
+                        # For doorbell, treat any event as "pressed"
+                        if programmableSwitchEvent is not None:
+                            Domoticz.Status("Doorbell pressed for Device " + hkName + " - IDX=" + str(IDX) + " - DeviceID=" + deviceID + " - DomoticzID=" + str(domoticzID))
+                            Devices[domoticzID].Update(nValue=1, sValue="Pressed")
+
                     elif( service["type"] == "3E"):
                         pass
+
                     else:
                         Domoticz.Debug("Device " + hkManufacturer + " - AID=" + str( hkaid ) + " - Type of Service=" + service["type"] + " - Not supported yet")
 
