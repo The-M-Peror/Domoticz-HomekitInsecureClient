@@ -281,7 +281,7 @@ class BasePlugin:
                             elif ( characteristic["type"] == "B0" ):      # Active
                                 active = characteristic["value"]
                                 activeIid = characteristic["iid"]
-                            elif ( characteristic["type"] == "F0" ):      # Current Heater Cooler State
+                            elif ( characteristic["type"] == "B1" ):      # Current Heater Cooler State
                                 currentState = characteristic["value"]
                                 stateIid = characteristic["iid"]
 
