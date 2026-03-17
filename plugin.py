@@ -235,6 +235,34 @@ class BasePlugin:
                             Domoticz.Status("Doorbell pressed for Device " + hkName + " - IDX=" + str(IDX) + " - DeviceID=" + deviceID + " - DomoticzID=" + str(domoticzID))
                             Devices[domoticzID].Update(nValue=1, sValue="Pressed")
 
+                    # Service of type Temperature Sensor
+                    elif( service["type"] == "8A" ):        # https://developers.homebridge.io/#/service/TemperatureSensor
+                        hkName = "NoName"
+                        currentTemperature = None
+                        hkiid = None
+                        for characteristic in service["characteristics"]:
+                            if ( characteristic["type"] == "23" ):      # Name
+                                hkName = characteristic["value"]
+                            if ( characteristic["type"] == "11" ):      # Current Temperature
+                                currentTemperature = characteristic["value"] 
+                                hkiid = characteristic["iid"]
+                        deviceID = service["type"] + "-" + str(hkaid) + "-" + str(hkiid)
+                        domoticzID = GetIDFromDevID(deviceID)
+                        Domoticz.Debug(hkManufacturer + " : " + hkName + " - DeviceID=" + deviceID + " - DomoticzID=" + str(domoticzID) + " - Current Temperature=" + str(currentTemperature))
+
+                        if (domoticzID == -1):
+                            Domoticz.Debug("Create domoticz device :\"" + hkName + "\" with ID=" + str(len(Devices) + 1) + " and DeviceID=" + deviceID + " of type Temperature Sensor")
+                            Domoticz.Device(Name=hkName, Unit=len(Devices) + 1, TypeName="Temp", DeviceID=deviceID).Create()
+                            domoticzID = GetIDFromDevID(deviceID)
+                            Domoticz.Log("Device created: " + hkName + " - DeviceID=" + deviceID)
+                        IDX = Devices[domoticzID].ID
+                        # Update temperature if changed
+                        if currentTemperature is not None:
+                            sValue = str(currentTemperature)
+                            if (Devices[domoticzID].sValue != sValue):
+                                Domoticz.Status("Set Temperature to " + sValue + " for Device " + hkName + " - IDX=" + str(IDX) + " - DeviceID=" + deviceID + " - DomoticzID=" + str(domoticzID))
+                                Devices[domoticzID].Update(nValue=0, sValue=sValue)
+
                     elif( service["type"] == "3E"):
                         pass
 
