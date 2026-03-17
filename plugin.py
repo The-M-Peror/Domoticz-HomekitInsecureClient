@@ -257,7 +257,7 @@ class BasePlugin:
                         if (domoticzID == -1):
                             nextUnit = GetNextUnit()
                             Domoticz.Debug("Create domoticz device :\"" + hkName + "\" with ID=" + str(nextUnit) + " and DeviceID=" + deviceID + " of type Temperature Sensor")
-                            Domoticz.Device(Name=hkName, Unit=nextUnit, TypeName="Temp", DeviceID=deviceID).Create()
+                            Domoticz.Device(Name=hkName, Unit=nextUnit, TypeName="Temperature", DeviceID=deviceID).Create()
                             domoticzID = GetIDFromDevID(deviceID)
                             Domoticz.Log("Device created: " + hkName + " - DeviceID=" + deviceID)
                         IDX = Devices[domoticzID].ID
