@@ -272,29 +272,60 @@ class BasePlugin:
                     elif( service["type"] == "BC" ):        # https://developers.homebridge.io/#/service/HeaterCooler
                         hkName = "NoName"
                         active = None
-                        hkiid = None
+                        currentState = None
+                        activeIid = None
+                        stateIid = None
                         for characteristic in service["characteristics"]:
                             if ( characteristic["type"] == "23" ):      # Name
                                 hkName = characteristic["value"]
-                            if ( characteristic["type"] == "B0" ):      # Active
+                            elif ( characteristic["type"] == "B0" ):      # Active
                                 active = characteristic["value"]
-                                hkiid = characteristic["iid"]
-                        deviceID = service["type"] + "-" + str(hkaid) + "-" + str(hkiid)
-                        domoticzID = GetIDFromDevID(deviceID)
-                        Domoticz.Debug(hkManufacturer + " : " + hkName + " - DeviceID=" + deviceID + " - DomoticzID=" + str(domoticzID) + " - Active=" + str(active))
+                                activeIid = characteristic["iid"]
+                            elif ( characteristic["type"] == "F0" ):      # Current Heater Cooler State
+                                currentState = characteristic["value"]
+                                stateIid = characteristic["iid"]
 
-                        if (domoticzID == -1):
-                            nextUnit = GetNextUnit()
-                            Domoticz.Debug("Create domoticz device :\"" + hkName + "\" with ID=" + str(nextUnit) + " and DeviceID=" + deviceID + " of type Switch")
-                            Domoticz.Device(Name=hkName, Unit=nextUnit, TypeName="Switch", DeviceID=deviceID).Create()
+                        # Handle Active switch
+                        if activeIid is not None:
+                            deviceID = service["type"] + "-" + str(hkaid) + "-" + str(activeIid)
                             domoticzID = GetIDFromDevID(deviceID)
-                            Domoticz.Log("Device created: " + hkName + " - DeviceID=" + deviceID)
-                        IDX = Devices[domoticzID].ID
-                        # Update status if changed
-                        hkValue = 1 if active else 0
-                        if (Devices[domoticzID].nValue != hkValue):
-                            Domoticz.Status("Set " + ("ON" if hkValue else "OFF") + " for Device " + hkName + " - IDX=" + str(IDX) + " - DeviceID=" + deviceID + " - DomoticzID=" + str(domoticzID))
-                            Devices[domoticzID].Update(nValue=hkValue, sValue="On" if hkValue else "Off")
+                            Domoticz.Debug(hkManufacturer + " : " + hkName + " - DeviceID=" + deviceID + " - DomoticzID=" + str(domoticzID) + " - Active=" + str(active))
+
+                            if (domoticzID == -1):
+                                nextUnit = GetNextUnit()
+                                Domoticz.Debug("Create domoticz device :\"" + hkName + "\" with ID=" + str(nextUnit) + " and DeviceID=" + deviceID + " of type Switch")
+                                Domoticz.Device(Name=hkName, Unit=nextUnit, TypeName="Switch", DeviceID=deviceID).Create()
+                                domoticzID = GetIDFromDevID(deviceID)
+                                Domoticz.Log("Device created: " + hkName + " - DeviceID=" + deviceID)
+                            IDX = Devices[domoticzID].ID
+                            # Update status if changed
+                            hkValue = 1 if active else 0
+                            if (Devices[domoticzID].nValue != hkValue):
+                                Domoticz.Status("Set " + ("ON" if hkValue else "OFF") + " for Device " + hkName + " - IDX=" + str(IDX) + " - DeviceID=" + deviceID + " - DomoticzID=" + str(domoticzID))
+                                Devices[domoticzID].Update(nValue=hkValue, sValue="On" if hkValue else "Off")
+
+                        # Handle Current Heater Cooler State selector
+                        if stateIid is not None:
+                            deviceID = service["type"] + "-State-" + str(hkaid) + "-" + str(stateIid)
+                            domoticzID = GetIDFromDevID(deviceID)
+                            Domoticz.Debug(hkManufacturer + " : " + hkName + " State - DeviceID=" + deviceID + " - DomoticzID=" + str(domoticzID) + " - Current State=" + str(currentState))
+
+                            if (domoticzID == -1):
+                                nextUnit = GetNextUnit()
+                                Domoticz.Debug("Create domoticz device :\"" + hkName + " State\" with ID=" + str(nextUnit) + " and DeviceID=" + deviceID + " of type Selector")
+                                options = {"LevelNames": "Inactive|Idle|Heating|Cooling", "LevelOffHidden": "false", "SelectorStyle": "0"}
+                                Domoticz.Device(Name=hkName + " State", Unit=nextUnit, Type=244, Subtype=62, Switchtype=18, DeviceID=deviceID, Options=options).Create()
+                                domoticzID = GetIDFromDevID(deviceID)
+                                Domoticz.Log("Device created: " + hkName + " State - DeviceID=" + deviceID)
+                            IDX = Devices[domoticzID].ID
+                            # Update state if changed
+                            if currentState is not None:
+                                stateNames = ["Inactive", "Idle", "Heating", "Cooling"]
+                                nValue = currentState * 10
+                                sValue = stateNames[currentState] if currentState < len(stateNames) else "Unknown"
+                                if (Devices[domoticzID].nValue != nValue):
+                                    Domoticz.Status("Set State to " + sValue + " for Device " + hkName + " State - IDX=" + str(IDX) + " - DeviceID=" + deviceID + " - DomoticzID=" + str(domoticzID))
+                                    Devices[domoticzID].Update(nValue=nValue, sValue=sValue)
 
                     elif( service["type"] == "3E"):
                         pass
