@@ -24,12 +24,18 @@
 import Domoticz
 import json
 
+if False==True: # Hack: get rid of the not found warnings in the IDE.
+    Domoticz = {}
+    Parameters = {}
+    Devices = {}
+
 class BasePlugin:
     enabled = False
     httpConnGet = None
     Timeout = 60000
     GetSent = 0
     headers = { 'Content-Type': 'Application/json'}
+    deviceData = {}
 
     def __init__(self):
         return
@@ -74,6 +80,10 @@ class BasePlugin:
 
         if (Status == 204):
             Domoticz.Debug( "Command sent")
+            return
+        elif (Status == 207):
+            Domoticz.Debug( "Command mixed response")
+            Domoticz.Debug( Data["Data"].decode("utf-8", "ignore") )
             return
         elif (Status != 200):
             Domoticz.Error("Invalid Data received. Status=" + str( Status) )
@@ -124,15 +134,110 @@ class BasePlugin:
                         IDX = Devices[domoticzID].ID
                         if ( hkValue != Devices[domoticzID].nValue ):
                             if ( hkValue == 1 ):
-                                Domoticz.Log("Set ON  to Device " + hkName + " - IDX=" + str( IDX ) + " - DeviceID=" + deviceID + " - DomoticzID=" + str( domoticzID ) )
+                                Domoticz.Status("Set ON  to Device " + hkName + " - IDX=" + str( IDX ) + " - DeviceID=" + deviceID + " - DomoticzID=" + str( domoticzID ) )
                                 Devices[domoticzID].Update(nValue=1,sValue="On")
                             elif ( hkValue == 0 ):
-                                Domoticz.Log("Set OFF to Device " + hkName + " - IDX=" + str( IDX ) + " - DeviceID=" + deviceID + " - DomoticzID=" + str( domoticzID ) )
+                                Domoticz.Status("Set OFF to Device " + hkName + " - IDX=" + str( IDX ) + " - DeviceID=" + deviceID + " - DomoticzID=" + str( domoticzID ) )
                                 Devices[domoticzID].Update(nValue=0,sValue="Off")
                             else:
                                 Domoticz.Error("Invalid Homekit Data")
+                    
+                    # Service of type Blinds (Window Covering)
+                    elif( service["type"] == "8C" ):
+                        Domoticz.Debug(str( service["characteristics"] ) )
+                        hkName="NoName"
+                        hkCurrentPosition = None
+                        hkTargetPosition = None
+                        hkiid = None
+                        for characteristic in service["characteristics"]:
+                            if ( characteristic["type"] == "23" ):
+                                hkName = characteristic["value"]
+                            if ( characteristic["type"] == "6D" ):
+                                hkCurrentPosition = characteristic["value"]
+                                hkiid = characteristic["iid"]
+                            if ( characteristic["type"] == "7C" ):
+                                hkTargetPosition = characteristic["value"]
+                                hkTargetPositionIid = characteristic["iid"]
+                        deviceID = service["type"] + "-" + str( hkaid ) + "-" + str( hkiid )
+                        domoticzID = GetIDFromDevID( deviceID )
+                        Domoticz.Debug( hkManufacturer + " : " + hkName + " - DeviceID=" + deviceID + " - DomoticzID=" + str( domoticzID ) + " - Current Position=" + str (hkCurrentPosition) )
+
+                        if ( domoticzID == -1 ):
+                            Domoticz.Debug("Create domoticz device :\"" + hkName + "\" with ID=" + str( len(Devices) + 1 ) + " and DeviceID=" + deviceID + " of type Blinds")
+                            Domoticz.Device(Name=hkName, Unit=len(Devices) + 1, TypeName="BlindsPercentage", DeviceID=deviceID ).Create()
+                            domoticzID = GetIDFromDevID( deviceID )
+                            Domoticz.Log("Device created: " + hkName + " - DeviceID=" + deviceID )
+                        IDX = Devices[domoticzID].ID
+                        Domoticz.Debug("Device " + hkName + " - IDX=" + str( IDX ) + " - DeviceID=" + deviceID + " - DomoticzID=" + str( domoticzID ) + " - nValue: " + str(Devices[domoticzID].nValue)  )
+                        # Store TargetPosition IID for future use
+                        if (domoticzID in self.deviceData):
+                            self.deviceData[domoticzID]["hkTargetPositionIid"] = str(hkTargetPositionIid)
+                        else:
+                            self.deviceData[domoticzID] = {
+                                "hkTargetPositionIid": str(hkTargetPositionIid)
+                            }
+                        # Update position if changed
+                        if (hkCurrentPosition is not None):
+                            self.setDomoStatusBlinds( Devices[domoticzID], hkCurrentPosition )
+                    
+                    # Service of type Motion Sensor
+                    elif( service["type"] == "85" ):        # https://developers.homebridge.io/#/service/MotionSensor
+                        hkName = "NoName"
+                        motionDetected = None
+                        hkiid = None
+                        for characteristic in service["characteristics"]:
+                            if ( characteristic["type"] == "23" ):      # https://developers.homebridge.io/#/characteristic/Name
+                                hkName = characteristic["value"]
+                            if ( characteristic["type"] == "22" ):      # https://developers.homebridge.io/#/characteristic/MotionDetected
+                                motionDetected = characteristic["value"] 
+                                hkiid = characteristic["iid"]
+                        deviceID = service["type"] + "-" + str(hkaid) + "-" + str(hkiid)
+                        domoticzID = GetIDFromDevID(deviceID)
+                        Domoticz.Debug(hkManufacturer + " : " + hkName + " - DeviceID=" + deviceID + " - DomoticzID=" + str(domoticzID) + " - Motion Detected=" + str(motionDetected))
+
+                        if (domoticzID == -1):
+                            Domoticz.Debug("Create domoticz device :\"" + hkName + "\" with ID=" + str(len(Devices) + 1) + " and DeviceID=" + deviceID + " of type Motion Sensor")
+                            Domoticz.Device(Name=hkName, Unit=len(Devices) + 1, TypeName="Motion", DeviceID=deviceID).Create()
+                            domoticzID = GetIDFromDevID(deviceID)
+                            Domoticz.Log("Device created: " + hkName + " - DeviceID=" + deviceID)
+                        IDX = Devices[domoticzID].ID
+                        # Update status if changed
+                        nValue = 1 if motionDetected else 0
+                        if (Devices[domoticzID].nValue != nValue):
+                            Domoticz.Status("Set Motion to " + ("ON" if nValue else "OFF") + " for Device " + hkName + " - IDX=" + str(IDX) + " - DeviceID=" + deviceID + " - DomoticzID=" + str(domoticzID))
+                            Devices[domoticzID].Update(nValue=nValue, sValue="On" if nValue else "Off")
+                    
+                    # Service of type Doorbell
+                    elif( service["type"] == "121" ):        # https://developers.homebridge.io/#/service/Doorbell
+                        hkName = "NoName"
+                        programmableSwitchEvent = None
+                        hkiid = None
+                        for characteristic in service["characteristics"]:
+                            if ( characteristic["type"] == "23" ):      # Name
+                                hkName = characteristic["value"]
+                            if ( characteristic["type"] == "73" ):      # ProgrammableSwitchEvent
+                                programmableSwitchEvent = characteristic["value"]
+                                hkiid = characteristic["iid"]
+                        deviceID = service["type"] + "-" + str(hkaid) + "-" + str(hkiid)
+                        domoticzID = GetIDFromDevID(deviceID)
+                        Domoticz.Debug(hkManufacturer + " : " + hkName + " - DeviceID=" + deviceID + " - DomoticzID=" + str(domoticzID) + " - Doorbell Event=" + str(programmableSwitchEvent))
+
+                        if (domoticzID == -1):
+                            Domoticz.Debug("Create domoticz device :\"" + hkName + "\" with ID=" + str(len(Devices) + 1) + " and DeviceID=" + deviceID + " of type Doorbell")
+                            Domoticz.Device(Name=hkName, Unit=len(Devices) + 1, Type=244, Subtype=73, Switchtype=1, DeviceID=deviceID).Create()
+                            domoticzID = GetIDFromDevID(deviceID)
+                            Domoticz.Log("Device created: " + hkName + " - DeviceID=" + deviceID)
+                        IDX = Devices[domoticzID].ID
+                        # Update status if event detected
+                        # ProgrammableSwitchEvent: 0=single press, 1=double press, 2=long press
+                        # For doorbell, treat any event as "pressed"
+                        if programmableSwitchEvent is not None:
+                            Domoticz.Status("Doorbell pressed for Device " + hkName + " - IDX=" + str(IDX) + " - DeviceID=" + deviceID + " - DomoticzID=" + str(domoticzID))
+                            Devices[domoticzID].Update(nValue=1, sValue="Pressed")
+
                     elif( service["type"] == "3E"):
                         pass
+
                     else:
                         Domoticz.Debug("Device " + hkManufacturer + " - AID=" + str( hkaid ) + " - Type of Service=" + service["type"] + " - Not supported yet")
 
@@ -147,16 +252,39 @@ class BasePlugin:
 
             deviceIDsplitted = Devices[Unit].DeviceID.split("-")
             aid = deviceIDsplitted[1]
-            iid = deviceIDsplitted[2]
+            iid = deviceIDsplitted[2]   
 
-            Domoticz.Log("Command called for Unit=" + str(Unit) + " and DeviceID=" + Devices[Unit].DeviceID + ": Parameter '" + str(Command) + "'")
-            data = "{\"characteristics\":[{\"aid\":" + aid + ",\"iid\":" + iid + ",\"value\":" + nValue + "}]}"
-            Domoticz.Debug(data)
+            # Detect device type
+            if deviceIDsplitted[0] == "8C":
+                # Blinds
+                # We need the iid for targetposition for _setting_ a position. The iid from above is that of currentposition (for _getting_ the position).
+                hkTargetPositionIid = self.deviceData[Unit]["hkTargetPositionIid"] if Unit in self.deviceData else None
+                if (hkTargetPositionIid is None):
+                    Domoticz.Error("Target position IID unknown, can not set.")
+                    return
+                iid = hkTargetPositionIid
 
-            try:
-                self.httpConnGet.Send({'Verb':'PUT', 'URL':'/characteristics', 'Headers': self.headers, 'Data': data})
-            except:
-                Domoticz.Error("Problem sending command to accessory : " + data)
+                if Command == "Off" or Command == "Close":
+                    self.setHkPositionBlinds(aid, iid, 0)
+                elif Command == "On" or Command == "Open":
+                    self.setHkPositionBlinds(aid, iid, 100)
+                elif Command == "Set Level":
+                    self.setHkPositionBlinds(aid, iid, Level)
+                elif Command == "Stop":
+                    Domoticz.Log("STOP command not supported in Somfy HomeKit integration.")  
+                    # https://community.home-assistant.io/t/somfy-connectivity-kit-support-for-overkiz-and-or-homekit/392569/16
+                    # Should be https://developers.homebridge.io/#/characteristic/HoldPosition I assume? 
+            
+            else:
+                # Assume simple on/off switch
+                Domoticz.Status("Command called for Unit=" + str(Unit) + " and DeviceID=" + Devices[Unit].DeviceID + ": Parameter '" + str(Command) + "'")
+                data = "{\"characteristics\":[{\"aid\":" + aid + ",\"iid\":" + iid + ",\"value\":" + nValue + "}]}"
+                Domoticz.Debug(data)
+
+                try:
+                    self.httpConnGet.Send({'Verb':'PUT', 'URL':'/characteristics', 'Headers': self.headers, 'Data': data})
+                except Exception:
+                    Domoticz.Error("Problem sending command to accessory : " + data)
 
     def onNotification(self, Name, Subject, Text, Status, Priority, Sound, ImageFile):
         Domoticz.Log("Notification: " + Name + "," + Subject + "," + Text + "," + Status + "," + str(Priority) + "," + Sound + "," + ImageFile)
@@ -178,6 +306,31 @@ class BasePlugin:
         else:
             Domoticz.Log("Connection Lost. Reconnecting.")
             self.httpConnGet.Connect(Timeout=self.Timeout)
+
+    def setDomoStatusBlinds(self, device, hkCurrentPosition):
+        # hkCurrentPosition is a uint between 0 and 100 where 0 is closed and 100 is open - "open" being the _window_ is open (the cover is rolled up in the case)
+        sValue = str(hkCurrentPosition)
+        nValue = 2
+        if hkCurrentPosition == 0:
+            nValue = 0
+        elif hkCurrentPosition == 100:
+            nValue = 1
+        if (device.sValue != sValue):
+            Domoticz.Status("Set Position from '"+device.sValue+"' to '" + sValue + "' for Device " + device.Name + " (" + str( device.ID ) + " )")
+            device.Update(nValue=nValue, sValue=sValue)
+            return True
+        else:
+            return False
+
+    def setHkPositionBlinds(self, aid, iid, value):
+        data = "{\"characteristics\":[{\"aid\":" + aid + ",\"iid\":" + iid + ",\"value\":" + str(value) + "}]}"
+        Domoticz.Debug(data)
+        try:
+            Domoticz.Status("Command called for aid=" + str(aid) + " iid=" + str(iid) + ": Value '" + str(value) + "'")
+            self.httpConnGet.Send({'Verb':'PUT', 'URL':'/characteristics', 'Headers': self.headers, 'Data': data})
+        except Exception:
+            Domoticz.Error("Problem sending command to accessory : " + data)
+
 
 global _plugin
 _plugin = BasePlugin()
@@ -258,4 +411,4 @@ def DumpHTTPResponseToLog(httpResp, level=0):
             Domoticz.Debug(indentStr + "['" + x + "']")
     else:
         Domoticz.Debug(indentStr + ">'" + x + "':'" + str(httpResp[x]) + "'")
-        
+
