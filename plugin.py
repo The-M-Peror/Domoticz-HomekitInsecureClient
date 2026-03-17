@@ -127,8 +127,9 @@ class BasePlugin:
                         Domoticz.Debug( hkManufacturer + " : " + hkName + " - DeviceID=" + deviceID + " - DomoticzID=" + str( domoticzID ) + " - Current Value=" + str (hkValue) )
 
                         if ( domoticzID == -1 ):
-                            Domoticz.Debug("Create domoticz device :\"" + hkName + "\" with ID=" + str( len(Devices) + 1 ) + " and DeviceID=" + deviceID + " of type Switch")
-                            Domoticz.Device(Name=hkName, Unit=len(Devices) + 1, TypeName="Switch", DeviceID=deviceID ).Create()
+                            nextUnit = GetNextUnit()
+                            Domoticz.Debug("Create domoticz device :\"" + hkName + "\" with ID=" + str( nextUnit ) + " and DeviceID=" + deviceID + " of type Switch")
+                            Domoticz.Device(Name=hkName, Unit=nextUnit, TypeName="Switch", DeviceID=deviceID ).Create()
                             domoticzID = GetIDFromDevID( deviceID )
                             Domoticz.Log("Device created: " + hkName + " - DeviceID=" + deviceID )
                         IDX = Devices[domoticzID].ID
@@ -163,8 +164,9 @@ class BasePlugin:
                         Domoticz.Debug( hkManufacturer + " : " + hkName + " - DeviceID=" + deviceID + " - DomoticzID=" + str( domoticzID ) + " - Current Position=" + str (hkCurrentPosition) )
 
                         if ( domoticzID == -1 ):
-                            Domoticz.Debug("Create domoticz device :\"" + hkName + "\" with ID=" + str( len(Devices) + 1 ) + " and DeviceID=" + deviceID + " of type Blinds")
-                            Domoticz.Device(Name=hkName, Unit=len(Devices) + 1, TypeName="BlindsPercentage", DeviceID=deviceID ).Create()
+                            nextUnit = GetNextUnit()
+                            Domoticz.Debug("Create domoticz device :\"" + hkName + "\" with ID=" + str( nextUnit ) + " and DeviceID=" + deviceID + " of type Blinds")
+                            Domoticz.Device(Name=hkName, Unit=nextUnit, TypeName="BlindsPercentage", DeviceID=deviceID ).Create()
                             domoticzID = GetIDFromDevID( deviceID )
                             Domoticz.Log("Device created: " + hkName + " - DeviceID=" + deviceID )
                         IDX = Devices[domoticzID].ID
@@ -196,8 +198,9 @@ class BasePlugin:
                         Domoticz.Debug(hkManufacturer + " : " + hkName + " - DeviceID=" + deviceID + " - DomoticzID=" + str(domoticzID) + " - Motion Detected=" + str(motionDetected))
 
                         if (domoticzID == -1):
-                            Domoticz.Debug("Create domoticz device :\"" + hkName + "\" with ID=" + str(len(Devices) + 1) + " and DeviceID=" + deviceID + " of type Motion Sensor")
-                            Domoticz.Device(Name=hkName, Unit=len(Devices) + 1, TypeName="Motion", DeviceID=deviceID).Create()
+                            nextUnit = GetNextUnit()
+                            Domoticz.Debug("Create domoticz device :\"" + hkName + "\" with ID=" + str(nextUnit) + " and DeviceID=" + deviceID + " of type Motion Sensor")
+                            Domoticz.Device(Name=hkName, Unit=nextUnit, TypeName="Motion", DeviceID=deviceID).Create()
                             domoticzID = GetIDFromDevID(deviceID)
                             Domoticz.Log("Device created: " + hkName + " - DeviceID=" + deviceID)
                         IDX = Devices[domoticzID].ID
@@ -223,8 +226,9 @@ class BasePlugin:
                         Domoticz.Debug(hkManufacturer + " : " + hkName + " - DeviceID=" + deviceID + " - DomoticzID=" + str(domoticzID) + " - Doorbell Event=" + str(programmableSwitchEvent))
 
                         if (domoticzID == -1):
-                            Domoticz.Debug("Create domoticz device :\"" + hkName + "\" with ID=" + str(len(Devices) + 1) + " and DeviceID=" + deviceID + " of type Doorbell")
-                            Domoticz.Device(Name=hkName, Unit=len(Devices) + 1, Type=244, Subtype=73, Switchtype=1, DeviceID=deviceID).Create()
+                            nextUnit = GetNextUnit()
+                            Domoticz.Debug("Create domoticz device :\"" + hkName + "\" with ID=" + str(nextUnit) + " and DeviceID=" + deviceID + " of type Doorbell")
+                            Domoticz.Device(Name=hkName, Unit=nextUnit, Type=244, Subtype=73, Switchtype=1, DeviceID=deviceID).Create()
                             domoticzID = GetIDFromDevID(deviceID)
                             Domoticz.Log("Device created: " + hkName + " - DeviceID=" + deviceID)
                         IDX = Devices[domoticzID].ID
@@ -251,8 +255,9 @@ class BasePlugin:
                         Domoticz.Debug(hkManufacturer + " : " + hkName + " - DeviceID=" + deviceID + " - DomoticzID=" + str(domoticzID) + " - Current Temperature=" + str(currentTemperature))
 
                         if (domoticzID == -1):
-                            Domoticz.Debug("Create domoticz device :\"" + hkName + "\" with ID=" + str(len(Devices) + 1) + " and DeviceID=" + deviceID + " of type Temperature Sensor")
-                            Domoticz.Device(Name=hkName, Unit=len(Devices) + 1, TypeName="Temp", DeviceID=deviceID).Create()
+                            nextUnit = GetNextUnit()
+                            Domoticz.Debug("Create domoticz device :\"" + hkName + "\" with ID=" + str(nextUnit) + " and DeviceID=" + deviceID + " of type Temperature Sensor")
+                            Domoticz.Device(Name=hkName, Unit=nextUnit, TypeName="Temp", DeviceID=deviceID).Create()
                             domoticzID = GetIDFromDevID(deviceID)
                             Domoticz.Log("Device created: " + hkName + " - DeviceID=" + deviceID)
                         IDX = Devices[domoticzID].ID
@@ -439,4 +444,10 @@ def DumpHTTPResponseToLog(httpResp, level=0):
             Domoticz.Debug(indentStr + "['" + x + "']")
     else:
         Domoticz.Debug(indentStr + ">'" + x + "':'" + str(httpResp[x]) + "'")
+
+
+def GetNextUnit():
+    if not Devices:
+        return 1
+    return max(Devices.keys()) + 1
 
