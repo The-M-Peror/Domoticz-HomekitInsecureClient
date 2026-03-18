@@ -322,10 +322,11 @@ class BasePlugin:
                             if currentState is not None:
                                 stateNames = ["Inactive", "Idle", "Heating", "Cooling"]
                                 nValue = currentState * 10
-                                sValue = stateNames[currentState] if currentState < len(stateNames) else "Unknown"
-                                if (Devices[domoticzID].nValue != nValue):
-                                    Domoticz.Status("Set State to " + sValue + " for Device " + hkName + " State - IDX=" + str(IDX) + " - DeviceID=" + deviceID + " - DomoticzID=" + str(domoticzID))
-                                    Devices[domoticzID].Update(nValue=nValue, sValue=sValue)
+                                sValueStr = stateNames[currentState] if currentState < len(stateNames) else "Unknown"
+                                sValue = str(nValue)
+                                if (Devices[domoticzID].sValue != sValue):
+                                    Domoticz.Status("Set State to " + sValueStr + " for Device " + hkName + " State - IDX=" + str(IDX) + " - DeviceID=" + deviceID + " - DomoticzID=" + str(domoticzID))
+                                    Devices[domoticzID].Update(nValue=2, sValue=sValue)
 
                     elif( service["type"] == "3E"):
                         pass
